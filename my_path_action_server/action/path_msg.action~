@@ -1,0 +1,8 @@
+#goal definition
+nav_msgs/Path nav_path
+---
+#result definition
+float64 result_msg
+---
+#feedback definition
+nav_msgs/Pose cur_pos
