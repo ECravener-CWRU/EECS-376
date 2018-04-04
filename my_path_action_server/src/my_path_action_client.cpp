@@ -12,6 +12,7 @@
 using namespace std;
 
 bool g_lidar_alarm=false; // global var for lidar alarm
+bool g_finished = false; //global var for completed goal
 geometry_msgs::Pose g_current_pose;
 
 geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi) {
@@ -32,7 +33,7 @@ double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion) {
 
 void alarmCallback(const std_msgs::Bool& alarm_msg) 
 { 
-    ROS_INFO("Callback");
+    ROS_INFO("lidar_alarm callback");
     g_lidar_alarm = alarm_msg.data; //make the alarm status global, so main() can use it
     if (g_lidar_alarm) {
        ROS_INFO("LIDAR alarm received!"); 
@@ -44,6 +45,7 @@ void feedbackCb(const my_path_action_server::path_msgFeedbackConstPtr& fdbk_msg)
 }
 
 void doneCb(const actionlib::SimpleClientGoalState& state, const my_path_action_server::path_msgResultConstPtr& result){
+        g_finished = true;
         ROS_INFO("doneCB: this is the result message!");
         ROS_INFO("my_path_action_server executed your request for pose!");
 }
@@ -134,7 +136,9 @@ int main(int argc, char** argv) {
 
            goal.nav_path = navigation_path;
            action_client.sendGoal(goal,&doneCb);
+           ROS_INFO("Sent Pose");
         }
+        
        //action_client.isPreemptRequested(); // THIS LINE NEEDS TO CANCEL CURRENT GOAL
         //SUPPOSED TO SPIN HERE
            //ros::Publisher twist_cmd_publisher = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);
@@ -150,7 +154,7 @@ int main(int argc, char** argv) {
            goal.nav_path = navigation_path;         
            action_client.sendGoal(goal,&doneCb);
        }
-       ROS_INFO("Sent Pose");
+       
 
        bool finished_before_timeout = action_client.waitForResult(ros::Duration(60.0));
 

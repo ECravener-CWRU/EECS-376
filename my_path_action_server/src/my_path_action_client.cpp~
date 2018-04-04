@@ -12,6 +12,7 @@
 using namespace std;
 
 bool g_lidar_alarm=false; // global var for lidar alarm
+bool g_finished = false; //global var for completed goal
 geometry_msgs::Pose g_current_pose;
 
 geometry_msgs::Quaternion convertPlanarPhi2Quaternion(double phi) {
@@ -32,7 +33,7 @@ double convertPlanarQuat2Phi(geometry_msgs::Quaternion quaternion) {
 
 void alarmCallback(const std_msgs::Bool& alarm_msg) 
 { 
-    ROS_INFO("Callback");
+    ROS_INFO("lidar_alarm callback");
     g_lidar_alarm = alarm_msg.data; //make the alarm status global, so main() can use it
     if (g_lidar_alarm) {
        ROS_INFO("LIDAR alarm received!"); 
@@ -44,6 +45,7 @@ void feedbackCb(const my_path_action_server::path_msgFeedbackConstPtr& fdbk_msg)
 }
 
 void doneCb(const actionlib::SimpleClientGoalState& state, const my_path_action_server::path_msgResultConstPtr& result){
+        g_finished = true;
         ROS_INFO("doneCB: this is the result message!");
         ROS_INFO("my_path_action_server executed your request for pose!");
 }
@@ -134,23 +136,27 @@ int main(int argc, char** argv) {
 
            goal.nav_path = navigation_path;
            action_client.sendGoal(goal,&doneCb);
+           ROS_INFO("Sent Pose");
         }
+        
        //action_client.isPreemptRequested(); // THIS LINE NEEDS TO CANCEL CURRENT GOAL
         //SUPPOSED TO SPIN HERE
            //ros::Publisher twist_cmd_publisher = n.advertise<geometry_msgs::Twist>("/robot0/cmd_vel", 1);
-       if(g_lidar_alarm){
-           action_client.cancelAllGoals();
-           ROS_INFO("ALARM ON");
-           //set position to
-           double new_ang = convertPlanarQuat2Phi(g_current_pose.orientation) + PI/4; //Will rotate 45 degrees
-           pose_stamped.pose.orientation = convertPlanarPhi2Quaternion(new_ang);
-           ROS_INFO("Will Rotate 45 degrees");  
-           pose_stamped.pose.position = g_current_pose.position;
-           navigation_path.poses.push_back(pose_stamped);
-           goal.nav_path = navigation_path;         
-           action_client.sendGoal(goal,&doneCb);
+       while(!g_finished){
+           if(g_lidar_alarm){
+              action_client.cancelAllGoals();
+              ROS_INFO("ALARM ON");
+              //set position to
+              double new_ang = convertPlanarQuat2Phi(g_current_pose.orientation) + PI/4; //Will rotate 45 degrees
+              pose_stamped.pose.orientation = convertPlanarPhi2Quaternion(new_ang);
+              ROS_INFO("Will Rotate 45 degrees");  
+              pose_stamped.pose.position = g_current_pose.position;
+              navigation_path.poses.push_back(pose_stamped);
+              goal.nav_path = navigation_path;         
+              action_client.sendGoal(goal,&doneCb);
+           }
        }
-       ROS_INFO("Sent Pose");
+       
 
        bool finished_before_timeout = action_client.waitForResult(ros::Duration(60.0));
 
