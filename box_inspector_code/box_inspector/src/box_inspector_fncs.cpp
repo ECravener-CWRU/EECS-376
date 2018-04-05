@@ -52,13 +52,8 @@ bool BoxInspector::model_poses_wrt_box(osrf_gear::Shipment &shipment_status) {
         if (imodel != i_box) { //if here, have a model NOT the box
             model = box_inspector_image_.models[imodel];
             string model_name(model.type);
-            ROS_INFO_STREAM("model: " << model << endl);
             model_pose_wrt_cam = model.pose;
             part_pose_wrt_world = compute_stPose(cam_pose, model_pose_wrt_cam);
-            ROS_INFO_STREAM("part pose wrt world: " << part_pose_wrt_world << endl);
-            
-            //ROS_WARN("model_poses_wrt_box(): FINISH ME!  compute part_pose_wrt_box");
-            //MISSING LINES HERE...
             affine_box_pose_wrt_cam = xformUtils_.transformPoseToEigenAffine3d(box_pose_wrt_cam);
             affine_part_wrt_cam = xformUtils_.transformPoseToEigenAffine3d(model_pose_wrt_cam);
             affine_part_wrt_box = affine_box_pose_wrt_cam.inverse()*affine_part_wrt_cam;
@@ -93,8 +88,6 @@ void BoxInspector::compute_shipment_poses_wrt_world(osrf_gear::Shipment shipment
     geometry_msgs::Pose box_p_wrt_world, product_pose_wrt_world;
     int num_products = shipment_wrt_box.products.size();
     
-    ROS_WARN("WRITE THIS FNC! compute_shipment_poses_wrt_world()");
-    ROS_INFO("In progress");
     //compute and fill in terms in desired_models_wrt_world
     //Loop through shipment to get all parts wrt box -> wrt world
     
@@ -114,9 +107,7 @@ void BoxInspector::compute_shipment_poses_wrt_world(osrf_gear::Shipment shipment
 geometry_msgs::Pose pose_difference(geometry_msgs::Pose pose1, geometry_msgs::Pose pose2) {
     geometry_msgs::Pose difference_pose;
     float p_x = pose2.position.x - pose1.position.x;
-    //ROS_INFO("x: %f",p_x);
     float p_y = pose2.position.y - pose1.position.y;
-    //ROS_INFO("y: %f",p_y);
     difference_pose.position.z = pose2.position.z - pose1.position.z;
     float o_x = pose2.orientation.x - pose1.orientation.x;
     float o_y = pose2.orientation.y - pose1.orientation.y;
@@ -127,10 +118,13 @@ geometry_msgs::Pose pose_difference(geometry_msgs::Pose pose1, geometry_msgs::Po
 }
 
 bool within_spec(geometry_msgs::Pose pose){
-   if(abs(pose.position.x)>.03||abs(pose.position.y)>.03||abs(pose.position.z)>.03){
+   float trans_spec = .03;
+   float rot_spec = .1;
+   
+   if(abs(pose.position.x)>trans_spec||abs(pose.position.y)>trans_spec||abs(pose.position.z)>trans_spec){
      return false;  
    }
-   if(abs(pose.orientation.x)>.1||abs(pose.orientation.y)>.1||abs(pose.orientation.z)>.1||abs(pose.orientation.w)>.1){
+   if(abs(pose.orientation.x)>rot_spec||abs(pose.orientation.y)>rot_spec||abs(pose.orientation.z)>rot_spec||abs(pose.orientation.w)>rot_spec){
      return false;
    }
    return true;

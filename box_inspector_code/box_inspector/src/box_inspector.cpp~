@@ -47,28 +47,7 @@ void BoxInspector::get_new_snapshot_from_box_cam() {
        vector<osrf_gear::Model> &misplaced_models_desired_coords_wrt_world,
        vector<osrf_gear::Model> &missing_models_wrt_world,
        vector<osrf_gear::Model> &orphan_models_wrt_world) {
-  //WRITE ME!!!
-  ROS_WARN("NEED TO WRITE update_inspection() ");
-  ROS_INFO("In Progress...");
-  got_new_snapshot_=false;
-  while(!got_new_snapshot_) {
-     ros::spinOnce(); // refresh camera image
-     ros::Duration(0.5).sleep();
-     ROS_INFO("waiting for logical camera image");
-  }
-  ROS_INFO("got new image");
-  int num_parts_seen =  box_inspector_image_.models.size();
-  int num_parts_desired = desired_models_wrt_world.size();
-  bool i_catagorized[num_parts_seen];
-  bool d_catagorized[num_parts_desired];
-
-  ROS_INFO("update_inspection: box camera saw %d objects",num_parts_seen);
-  orphan_models_wrt_world.clear(); //this will be empty, unless something very odd happens
-  satisfied_models_wrt_world.clear();  //shipment will be complete when this matches parts/poses specified in shipment
-  misplaced_models_actual_coords_wrt_world.clear();
-  misplaced_models_desired_coords_wrt_world.clear();
-  missing_models_wrt_world.clear();
-
+  
   osrf_gear::Model model;
   Eigen::Affine3d affine_model_wrt_world, affine_model_wrt_box, affine_box_wrt_world;
   geometry_msgs::Pose box_p_wrt_world, model_pose_wrt_world, difference_pose;
@@ -76,39 +55,60 @@ void BoxInspector::get_new_snapshot_from_box_cam() {
   vector<osrf_gear::Model> image_models_wrt_world;
   osrf_gear::Shipment cur_shipment;
   
+  got_new_snapshot_=false;
+  while(!got_new_snapshot_) {
+     ros::spinOnce(); // refresh camera image
+     ros::Duration(0.5).sleep();
+     ROS_INFO("waiting for logical camera image");
+  }
+  ROS_INFO("got new image");
+  int num_parts_seen = 0;
+  int num_parts_seen2 =  box_inspector_image_.models.size();
+  int num_parts_desired = desired_models_wrt_world.size();
+  bool i_catagorized[num_parts_seen];
+  bool d_catagorized[num_parts_desired];
+  string box_name("shipping_box");
+  
+  for(int i=0;i<num_parts_seen2;i++){
+    model = box_inspector_image_.models[i];
+    string model_name(model.type);
+    if (model_name != box_name) {
+      num_parts_seen++;
+    }
+  }
+  
+  ROS_INFO("update_inspection: box camera saw %d objects",num_parts_seen);
+  orphan_models_wrt_world.clear(); //this will be empty, unless something very odd happens
+  satisfied_models_wrt_world.clear();  //shipment will be complete when this matches parts/poses specified in shipment
+  misplaced_models_actual_coords_wrt_world.clear();
+  misplaced_models_desired_coords_wrt_world.clear();
+  missing_models_wrt_world.clear();
+
+  
+  
   //Obtain models wrt box
   get_box_pose_wrt_world(box_pose_wrt_world);
   model_poses_wrt_box(cur_shipment);
   compute_shipment_poses_wrt_world(cur_shipment, box_pose_wrt_world,image_models_wrt_world);
-  //affine_box_wrt_world = xformUtils_.transformPoseToEigenAffine3d(box_pose_wrt_world.pose);
-  //for(int i=0;i<num_parts_seen;i++){
-    
-  //}
+  
   for(int i=0;i<num_parts_desired+num_parts_seen;i++){
     d_catagorized[i] = false;
     i_catagorized[i] = false;
   }
-  ROS_INFO("num_parts_seen: %d",num_parts_seen);
-  ROS_INFO("num_parts_desired: %d",num_parts_desired);
   for(int i=0;i<num_parts_seen-1;i++) {
-        ROS_INFO_STREAM("image" << image_models_wrt_world[i] << endl);
-        ROS_INFO("%d",i);
       for(int j=0;j<num_parts_desired;j++){     
 	 if(desired_models_wrt_world[j].type.compare(image_models_wrt_world[i].type)==0){
             //if type is same, check proximity
             difference_pose = pose_difference(desired_models_wrt_world[j].pose, image_models_wrt_world[i].pose);
-            if(within_spec(difference_pose)){
-               ROS_INFO("before i");
+            if(within_spec(difference_pose) && !i_catagorized[i]  && !d_catagorized[j]){
                i_catagorized[i] = true;
-               ROS_INFO("before d");
                d_catagorized[j] = true;
                satisfied_models_wrt_world.push_back(image_models_wrt_world[i]);
-               ROS_INFO("%d",i);
             }
          }
       }
   }
- ROS_INFO("Before Loop2");
+
  for(int i=0;i<num_parts_seen-1;i++) {
       for(int j=0;j<num_parts_desired;j++){
         if(!i_catagorized[i] && !d_catagorized[j]){ //if not already catagorized check type
@@ -121,18 +121,23 @@ void BoxInspector::get_new_snapshot_from_box_cam() {
         }
       }
  }
+ 
  for(int i=0;i<num_parts_seen-1;i++) {
     if(!i_catagorized[i]){
-      orphan_models_wrt_world.push_back(image_models_wrt_world[i]);
+      model = image_models_wrt_world[i];
+      string model_name(model.type);
+      if (model_name != box_name) {
+       orphan_models_wrt_world.push_back(image_models_wrt_world[i]);
+      }
     }
  }
-string box_name("shipping_box");
+
  for(int i=0;i<num_parts_desired;i++) {
     if(!d_catagorized[i]){
         model = desired_models_wrt_world[i];
         string model_name(model.type);
-        if (model_name != box_name) {  //If not a shipping box add to orphan_models
-          orphan_models_wrt_world.push_back(desired_models_wrt_world[i]);
+        if (model_name != box_name) {  //If not a shipping box add to missing_models
+          missing_models_wrt_world.push_back(desired_models_wrt_world[i]);
         }
      }
  }
@@ -169,7 +174,7 @@ bool BoxInspector::get_box_pose_wrt_world(geometry_msgs::PoseStamped &box_pose_w
             ROS_INFO_STREAM("get_box_pose_wrt_world(): found box at pose " << box_pose << endl);
             //ROS_WARN("USE THIS INFO TO COMPUTE BOX POSE WRT WORLD AND  POPULATE box_pose_wrt_world");
             box_pose_wrt_world = compute_stPose(cam_pose, box_pose);
-            ROS_INFO_STREAM("box_pose_wrt_world: " << box_pose_wrt_world << endl);
+            //ROS_INFO_STREAM("box_pose_wrt_world: " << box_pose_wrt_world << endl);
             return true;
         }
     }
