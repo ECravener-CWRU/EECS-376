@@ -61,7 +61,6 @@ void BoxInspector::get_new_snapshot_from_box_cam() {
   int num_parts_desired = desired_models_wrt_world.size();
   bool i_catagorized[num_parts_seen];
   bool d_catagorized[num_parts_desired];
-  bool s_type[num_parts_desired];  
 
   ROS_INFO("update_inspection: box camera saw %d objects",num_parts_seen);
   orphan_models_wrt_world.clear(); //this will be empty, unless something very odd happens
@@ -75,42 +74,42 @@ void BoxInspector::get_new_snapshot_from_box_cam() {
   geometry_msgs::Pose box_p_wrt_world, model_pose_wrt_world, difference_pose;
   geometry_msgs::PoseStamped box_pose_wrt_world;
   vector<osrf_gear::Model> image_models_wrt_world;
+  osrf_gear::Shipment cur_shipment;
   
-  int pos_tol = .03; //3cm position tolerance
-  int ori_tol = .1; //.1rad orientation tolerance
-  
-  //Obtain models in box wrt world
+  //Obtain models wrt box
   get_box_pose_wrt_world(box_pose_wrt_world);
-  affine_box_wrt_world = xformUtils_.transformPoseToEigenAffine3d(box_pose_wrt_world.pose);
-  for(int i=0;i<num_parts_seen;i++){
-    model = box_inspector_image_.models[i]; 
-    affine_model_wrt_box = xformUtils_.transformPoseToEigenAffine3d(model.pose);
-    affine_model_wrt_world = affine_box_wrt_world * affine_model_wrt_box;
-    model_pose_wrt_world = xformUtils_.transformEigenAffine3dToPose(affine_model_wrt_world);
-    model.pose = model_pose_wrt_world;
-    image_models_wrt_world.push_back(model);
+  model_poses_wrt_box(cur_shipment);
+  compute_shipment_poses_wrt_world(cur_shipment, box_pose_wrt_world,image_models_wrt_world);
+  //affine_box_wrt_world = xformUtils_.transformPoseToEigenAffine3d(box_pose_wrt_world.pose);
+  //for(int i=0;i<num_parts_seen;i++){
+    
+  //}
+  for(int i=0;i<num_parts_desired+num_parts_seen;i++){
+    d_catagorized[i] = false;
     i_catagorized[i] = false;
   }
-  string model_name;
-  for(int i=0;i<num_parts_desired;i++){
-    d_catagorized[i] = false;
-    s_type[i] = false;
-  }
-  
-  for(int i=0;i<num_parts_seen;i++) {
+  ROS_INFO("num_parts_seen: %d",num_parts_seen);
+  ROS_INFO("num_parts_desired: %d",num_parts_desired);
+  for(int i=0;i<num_parts_seen-1;i++) {
+        ROS_INFO_STREAM("image" << image_models_wrt_world[i] << endl);
+        ROS_INFO("%d",i);
       for(int j=0;j<num_parts_desired;j++){     
 	 if(desired_models_wrt_world[j].type.compare(image_models_wrt_world[i].type)==0){
             //if type is same, check proximity
             difference_pose = pose_difference(desired_models_wrt_world[j].pose, image_models_wrt_world[i].pose);
             if(within_spec(difference_pose)){
+               ROS_INFO("before i");
                i_catagorized[i] = true;
+               ROS_INFO("before d");
                d_catagorized[j] = true;
                satisfied_models_wrt_world.push_back(image_models_wrt_world[i]);
+               ROS_INFO("%d",i);
             }
          }
       }
   }
- for(int i=0;i<num_parts_seen;i++) {
+ ROS_INFO("Before Loop2");
+ for(int i=0;i<num_parts_seen-1;i++) {
       for(int j=0;j<num_parts_desired;j++){
         if(!i_catagorized[i] && !d_catagorized[j]){ //if not already catagorized check type
            if(desired_models_wrt_world[j].type.compare(image_models_wrt_world[i].type)==0){
@@ -122,7 +121,7 @@ void BoxInspector::get_new_snapshot_from_box_cam() {
         }
       }
  }
- for(int i=0;i<num_parts_seen;i++) {
+ for(int i=0;i<num_parts_seen-1;i++) {
     if(!i_catagorized[i]){
       orphan_models_wrt_world.push_back(image_models_wrt_world[i]);
     }

@@ -113,13 +113,16 @@ void BoxInspector::compute_shipment_poses_wrt_world(osrf_gear::Shipment shipment
 
 geometry_msgs::Pose pose_difference(geometry_msgs::Pose pose1, geometry_msgs::Pose pose2) {
     geometry_msgs::Pose difference_pose;
-    difference_pose.position.x = pose2.position.x - pose1.position.x;
-    difference_pose.position.y = pose2.position.y - pose1.position.y;
+    float p_x = pose2.position.x - pose1.position.x;
+    //ROS_INFO("x: %f",p_x);
+    float p_y = pose2.position.y - pose1.position.y;
+    //ROS_INFO("y: %f",p_y);
     difference_pose.position.z = pose2.position.z - pose1.position.z;
-    difference_pose.orientation.x = pose2.orientation.x - pose1.orientation.x;
-    difference_pose.orientation.y = pose2.orientation.y - pose1.orientation.y;
+    float o_x = pose2.orientation.x - pose1.orientation.x;
+    float o_y = pose2.orientation.y - pose1.orientation.y;
     difference_pose.orientation.z = pose2.orientation.z - pose1.orientation.z;
     difference_pose.orientation.w = pose2.orientation.w - pose1.orientation.w;
+    
     return difference_pose;
 }
 
