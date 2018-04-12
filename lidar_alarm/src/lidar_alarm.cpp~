@@ -48,11 +48,11 @@ void laserCallback(const sensor_msgs::LaserScan& laser_scan) {
         ROS_INFO("LIDAR setup: ping_index = %d",ping_index_);
     }
     
-    if(g_speed<1) {  
+    if(g_speed<1) {  //If the robot previously saw an obstacle, check a .94m area in front
        min_safe = 1.0;
        angle_spread = atan(.47/min_safe);
     }
-    else {
+    else {  //maintain a .5m safe zone in front
        min_safe = g_speed;
        angle_spread = atan(.25/min_safe);
     }
